@@ -1,71 +1,86 @@
-import pyowm
-from telegram import Message, Chat, Update, Bot
-from telegram.ext import run_async
+from EzilaXBot import telethn as tbot
+import io
+import os
+import time
 
-from tg_bot import dispatcher, updater, API_WEATHER
-from tg_bot.modules.disable import DisableAbleCommandHandler
+import aiohttp
+from telethon import *
+from telethon.tl import functions
+from telethon.tl import types
+from telethon.tl.types import *
 
-@run_async
-def weather(bot, update, args):
-    if len(args) == 0:
-        update.effective_message.reply_text("Write a location to check the weather.")
+from EzilaXBot import *
+
+from EzilaXBot.events import register
+
+
+async def is_register_admin(chat, user):
+    if isinstance(chat, (types.InputPeerChannel, types.InputChannel)):
+        return isinstance(
+            (
+                await tbot(functions.channels.GetParticipantRequest(chat, user))
+            ).participant,
+            (types.ChannelParticipantAdmin, types.ChannelParticipantCreator),
+        )
+    if isinstance(chat, types.InputPeerUser):
+        return True
+
+
+@register(pattern="^/weather (.*)")
+async def _(event):
+    if event.fwd_from:
         return
 
-    location = " ".join(args)
-    if location.lower() == bot.first_name.lower():
-        update.effective_message.reply_text("I will keep an eye on both happy and sad times!")
-        bot.send_sticker(update.effective_chat.id, BAN_STICKER)
+    sample_url = (
+        "https://api.openweathermap.org/data/2.5/weather?q={}&APPID={}&units=metric"
+    )
+    input_str = event.pattern_match.group(1)
+    async with aiohttp.ClientSession() as session:
+        response_api_zero = await session.get(
+            sample_url.format(input_str, OPENWEATHERMAP_ID)
+        )
+    response_api = await response_api_zero.json()
+    if response_api["cod"] == 200:
+        country_code = response_api["sys"]["country"]
+        country_time_zone = int(response_api["timezone"])
+        sun_rise_time = int(response_api["sys"]["sunrise"]) + country_time_zone
+        sun_set_time = int(response_api["sys"]["sunset"]) + country_time_zone
+        await event.reply(
+            """**Location**: {}
+**Temperature**: {}°С
+    __minimium__: {}°С
+    __maximum__ : {}°С
+**Humidity**: {}%
+**Wind**: {}m/s
+**Clouds**: {}hpa
+**Sunrise**: {} {}
+**Sunset**: {} {}""".format(
+                input_str,
+                response_api["main"]["temp"],
+                response_api["main"]["temp_min"],
+                response_api["main"]["temp_max"],
+                response_api["main"]["humidity"],
+                response_api["wind"]["speed"],
+                response_api["clouds"]["all"],
+                time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(sun_rise_time)),
+                country_code,
+                time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(sun_set_time)),
+                country_code,
+            )
+        )
+    else:
+        await event.reply(response_api["message"])
+
+
+@register(pattern="^/wttr (.*)")
+async def _(event):
+    if event.fwd_from:
         return
 
-    try:
-        owm = pyowm.OWM(API_WEATHER)
-        observation = owm.weather_at_place(location)
-        getloc = observation.get_location()
-        thelocation = getloc.get_name()
-        if thelocation == None:
-            thelocation = "Unknown"
-        theweather = observation.get_weather()
-        temperature = theweather.get_temperature(unit='celsius').get('temp')
-        if temperature == None:
-            temperature = "Unknown"
-
-        # Weather symbols
-        status = ""
-        status_now = theweather.get_weather_code()
-        if status_now < 232: # Rain storm
-            status += "⛈️ "
-        elif status_now < 321: # Drizzle
-            status += "🌧️ "
-        elif status_now < 504: # Light rain
-            status += "🌦️ "
-        elif status_now < 531: # Cloudy rain
-             status += "⛈️ "
-        elif status_now < 622: # Snow
-            status += "🌨️ "
-        elif status_now < 781: # Atmosphere
-            status += "🌪️ "
-        elif status_now < 800: # Bright
-            status += "🌤️ "
-        elif status_now < 801: # A little cloudy
-             status += "⛅️ "
-        elif status_now < 804: # Cloudy
-             status += "☁️ "
-        status += theweather._detailed_status
-                        
-
-        update.message.reply_text("Today in {} is being {}, around {}°C.\n".format(thelocation,
-                status, temperature))
-
-    except pyowm.exceptions.not_found_error.NotFoundError:
-        update.effective_message.reply_text("Sorry, location not found.")
-
-
-__help__ = """
- - /weather <city>: get weather info in a particular place
-"""
-
-__mod_name__ = "WEATHER"
-
-WEATHER_HANDLER = DisableAbleCommandHandler("weather", weather, pass_args=True)
-
-dispatcher.add_handler(WEATHER_HANDLER)
+    sample_url = "https://wttr.in/{}.png"
+    input_str = event.pattern_match.group(1)
+    async with aiohttp.ClientSession() as session:
+        response_api_zero = await session.get(sample_url.format(input_str))
+        response_api = await response_api_zero.read()
+        with io.BytesIO(response_api) as out_file:
+            await event.reply(file=out_file)

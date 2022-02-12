@@ -1,53 +1,35 @@
-import html
-import json
-import random
-from datetime import datetime
-from typing import Optional, List
-import time
-import requests
-from telegram import Message, Chat, Update, Bot, MessageEntity
-from telegram import ParseMode
-from telegram.ext import CommandHandler, run_async, Filters
-from telegram.utils.helpers import escape_markdown, mention_html
-                                                                   
-from tg_bot import dispatcher
-from tg_bot.modules.disable import DisableAbleCommandHandler
-from tg_bot.modules.helper_funcs.extraction import extract_user
-from tg_bot.modules.helper_funcs.filters import CustomFilters
-
+import os
+from EzilaXBot import telethn as tbot
 from geopy.geocoders import Nominatim
-from telegram import Location
-
+from EzilaXBot.events import register
+from EzilaXBot import *
+from telethon import *
+from telethon.tl import *
 
 GMAPS_LOC = "https://maps.googleapis.com/maps/api/geocode/json"
 
 
+@register(pattern="^/gps (.*)")
+async def _(event):
+    args = event.pattern_match.group(1)
 
-def gps(bot: Bot, update: Update, args: List[str]):
-    message = update.effective_message
-    if len(args) == 0:
-        update.effective_message.reply_text("That was a funny joke, but no really, put in a location")
     try:
         geolocator = Nominatim(user_agent="SkittBot")
-        location = " ".join(args)
-        geoloc = geolocator.geocode(location)  
-        chat_id = update.effective_chat.id
-        lon = geoloc.longitude
-        lat = geoloc.latitude
-        the_loc = Location(lon, lat) 
-        gm = "https://www.google.com/maps/search/{},{}".format(lat,lon)
-        bot.send_location(chat_id, location=the_loc)
-        update.message.reply_text("Open with: [Google Maps]({})".format(gm), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
-    except AttributeError:
-        update.message.reply_text("I can't find that")
-
-
-__help__ = """
-- /gps: <location> Get gps location..
-"""
-
-__mod_name__ = "GPS"
-
-GPS_HANDLER = DisableAbleCommandHandler("gps", gps, pass_args=True)
-
-dispatcher.add_handler(GPS_HANDLER)
+        location = args
+        geoloc = geolocator.geocode(location)
+        longitude = geoloc.longitude
+        latitude = geoloc.latitude
+        gm = "https://www.google.com/maps/search/{},{}".format(latitude, longitude)
+        await tbot.send_file(
+            event.chat_id,
+            file=types.InputMediaGeoPoint(
+                types.InputGeoPoint(float(latitude), float(longitude))
+            ),
+        )
+        await event.reply(
+            "Open with: [🌏Google Maps]({})".format(gm),
+            link_preview=False,
+        )
+    except Exception as e:
+        print(e)
+        await event.reply("I can't find that")

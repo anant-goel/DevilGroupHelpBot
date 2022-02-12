@@ -1,16 +1,17 @@
 import requests
-from telegram import Update, Bot, ParseMode
-from telegram.ext import run_async
-
-from tg_bot import dispatcher
-from tg_bot.modules.disable import DisableAbleCommandHandler
+from EzilaXBot import dispatcher
+from EzilaXBot.modules.disable import DisableAbleCommandHandler
+from telegram import ParseMode, Update
+from telegram.ext import CallbackContext, run_async
 
 
 @run_async
-def ud(bot: Bot, update: Update):
+def ud(update: Update, context: CallbackContext):
     message = update.effective_message
-    text = message.text[len('/ud '):]
-    results = requests.get(f'http://api.urbandictionary.com/v0/define?term={text}').json()
+    text = message.text[len("/ud ") :]
+    results = requests.get(
+        f"https://api.urbandictionary.com/v0/define?term={text}"
+    ).json()
     try:
         reply_text = f'*{text}*\n\n{results["list"][0]["definition"]}\n\n_{results["list"][0]["example"]}_'
     except:
@@ -18,15 +19,9 @@ def ud(bot: Bot, update: Update):
     message.reply_text(reply_text, parse_mode=ParseMode.MARKDOWN)
 
 
-__help__ = """
- - /ud <word>: Type the word or expression you want to search use.
- - /urban <word>: Same as /ud
-"""
-
-UD_HANDLER = DisableAbleCommandHandler(["ud", "urban"], ud)
+UD_HANDLER = DisableAbleCommandHandler(["ud"], ud)
 
 dispatcher.add_handler(UD_HANDLER)
 
-__mod_name__ = "URBAN DICTIONARY"
-__command_list__ = ["ud", "urban"]
+__command_list__ = ["ud"]
 __handlers__ = [UD_HANDLER]
