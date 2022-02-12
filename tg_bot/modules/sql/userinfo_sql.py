@@ -1,8 +1,7 @@
 import threading
 
+from EzilaXBot.modules.sql import BASE, SESSION
 from sqlalchemy import Column, Integer, UnicodeText
-
-from tg_bot.modules.sql import SESSION, BASE
 
 
 class UserInfo(BASE):

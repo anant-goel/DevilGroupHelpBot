@@ -1,8 +1,7 @@
 import threading
 
-from sqlalchemy import Column, String, func, distinct
-
-from tg_bot.modules.sql import BASE, SESSION
+from EzilaXBot.modules.sql import BASE, SESSION
+from sqlalchemy import Column, String, distinct, func
 
 
 class GroupLogs(BASE):
@@ -20,7 +19,6 @@ GroupLogs.__table__.create(checkfirst=True)
 LOGS_INSERTION_LOCK = threading.RLock()
 
 CHANNELS = {}
-
 
 
 def set_chat_log_channel(chat_id, log_channel):

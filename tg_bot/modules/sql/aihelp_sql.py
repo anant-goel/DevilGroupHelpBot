@@ -4,8 +4,8 @@ from EzilaXBot.modules.sql import BASE, SESSION
 from sqlalchemy import Column, String
 
 
-class ChatbotChats(BASE):
-    __tablename__ = "chatbot_chats"
+class aiChats(BASE):
+    __tablename__ = "ai_chats"
     chat_id = Column(String(14), primary_key=True)
     ses_id = Column(String(70))
     expires = Column(String(15))
@@ -16,27 +16,26 @@ class ChatbotChats(BASE):
         self.expires = expires
 
 
-ChatbotChats.__table__.create(checkfirst=True)
+aiChats.__table__.create(checkfirst=True)
 
 INSERTION_LOCK = threading.RLock()
 
 
 def is_chat(chat_id):
     try:
-        chat = SESSION.query(ChatbotChats).get(str(chat_id))
+        chat = SESSION.query(aiChats).get(str(chat_id))
         if chat:
             return True
-        else:
-            return False
+        return False
     finally:
         SESSION.close()
 
 
 def set_ses(chat_id, ses_id, expires):
     with INSERTION_LOCK:
-        autochat = SESSION.query(ChatbotChats).get(str(chat_id))
+        autochat = SESSION.query(aiChats).get(str(chat_id))
         if not autochat:
-            autochat = ChatbotChats(str(chat_id), str(ses_id), str(expires))
+            autochat = aiChats(str(chat_id), str(ses_id), str(expires))
         else:
             autochat.ses_id = str(ses_id)
             autochat.expires = str(expires)
@@ -46,7 +45,7 @@ def set_ses(chat_id, ses_id, expires):
 
 
 def get_ses(chat_id):
-    autochat = SESSION.query(ChatbotChats).get(str(chat_id))
+    autochat = SESSION.query(aiChats).get(str(chat_id))
     sesh = ""
     exp = ""
     if autochat:
@@ -59,7 +58,7 @@ def get_ses(chat_id):
 
 def rem_chat(chat_id):
     with INSERTION_LOCK:
-        autochat = SESSION.query(ChatbotChats).get(str(chat_id))
+        autochat = SESSION.query(aiChats).get(str(chat_id))
         if autochat:
             SESSION.delete(autochat)
 
@@ -68,6 +67,6 @@ def rem_chat(chat_id):
 
 def get_all_chats():
     try:
-        return SESSION.query(ChatbotChats.chat_id).all()
+        return SESSION.query(aiChats.chat_id).all()
     finally:
         SESSION.close()
